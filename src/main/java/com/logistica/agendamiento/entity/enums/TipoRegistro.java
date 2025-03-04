@@ -1,4 +1,8 @@
 package com.logistica.agendamiento.entity.enums;
 
-public class TipoRegistro {
+public enum TipoRegistro {
+    INGRESO_PLANTA,
+    SALIDA_PLANTA,
+    INICIO_RECEPCION,
+    FIN_RECEPCION
 }

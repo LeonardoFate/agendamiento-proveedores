@@ -1,4 +1,8 @@
 package com.logistica.agendamiento.entity.enums;
 
-public class Rol {
+public enum Rol {
+    ADMIN,
+    GUARDIA,
+    AGENTE,
+    PROVEEDOR
 }

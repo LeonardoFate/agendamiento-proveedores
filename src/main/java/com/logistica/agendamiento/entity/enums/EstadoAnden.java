@@ -1,4 +1,9 @@
 package com.logistica.agendamiento.entity.enums;
 
-public class EstadoAnden {
+public enum EstadoAnden {
+    DISPONIBLE,
+    OCUPADO,
+    ALMUERZO,
+    DESCANSO,
+    NO_DISPONIBLE
 }
