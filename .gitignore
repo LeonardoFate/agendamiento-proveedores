@@ -33,7 +33,29 @@ build/
 .vscode/
 
 
-/target
-
-mvnw.cmd
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
 mvnw
+mvnw.cmd
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Archivos específicos de la aplicación
+/uploads/
+application.properties.dist
+
+# Archivos de registro
+*.log
+
+# IDE
+External Libraries/
+Scratches and Consoles/
