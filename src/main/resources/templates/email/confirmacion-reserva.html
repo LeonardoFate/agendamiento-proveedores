@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Confirmación de Reserva</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #0077b6;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+        }
+        .content {
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-top: none;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #777;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>Confirmación de Reserva</h1>
+    </div>
+    <div class="content">
+        <p>Estimado <span th:text="${reserva.proveedorNombre}">Proveedor</span>,</p>
+
+        <p>Su reserva ha sido confirmada con éxito. A continuación, encontrará los detalles:</p>
+
+        <table>
+            <tr>
+                <th>Número de Reserva</th>
+                <td th:text="${reserva.id}">12345</td>
+            </tr>
+            <tr>
+                <th>Fecha</th>
+                <td th:text="${fecha}">01/01/2023</td>
+            </tr>
+            <tr>
+                <th>Hora</th>
+                <td th:text="${horaInicio} + ' - ' + ${horaFin}">10:00 - 11:00</td>
+            </tr>
+            <tr>
+                <th>Área</th>
+                <td th:text="${reserva.areaNombre}">Congelados</td>
+            </tr>
+            <tr>
+                <th>Andén</th>
+                <td th:text="${reserva.andenNumero}">1</td>
+            </tr>
+            <tr>
+                <th>Tipo de Servicio</th>
+                <td th:text="${reserva.tipoServicioNombre}">Camión</td>
+            </tr>
+            <tr>
+                <th>Transporte</th>
+                <td th:text="${reserva.transporteMarca} + ' ' + ${reserva.transporteModelo} + ' (' + ${reserva.transportePlaca} + ')'">Toyota Hilux (ABC-123)</td>
+            </tr>
+        </table>
+
+        <p>Por favor, asegúrese de llegar puntualmente. Si necesita realizar algún cambio, hágalo con al menos 24 horas de anticipación.</p>
+
+        <p>Saludos cordiales,<br>
+            El equipo de Agendamiento de Proveedores</p>
+    </div>
+    <div class="footer">
+        <p>Este es un correo automático, por favor no responda a este mensaje.</p>
+        <p>&copy; 2023 Sistema de Agendamiento de Proveedores</p>
+    </div>
+</div>
+</body>
+</html>
