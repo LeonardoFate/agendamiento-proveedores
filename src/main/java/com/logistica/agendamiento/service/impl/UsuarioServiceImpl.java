@@ -8,12 +8,13 @@ import com.logistica.agendamiento.exception.ResourceNotFoundException;
 import com.logistica.agendamiento.repository.UsuarioRepository;
 import com.logistica.agendamiento.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.stream.Collectors;
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UsuarioServiceImpl implements UsuarioService {
@@ -106,11 +107,18 @@ public class UsuarioServiceImpl implements UsuarioService {
 
     @Override
     public void cambiarPassword(Long id, String nuevaPassword) {
+        log.info("Intentando cambiar contraseña para usuario ID: " + id);
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + id));
 
-        usuario.setPassword(passwordEncoder.encode(nuevaPassword));
-        usuarioRepository.save(usuario);
+        log.info("Usuario encontrado: " + usuario.getUsername());
+        String encodedPassword = passwordEncoder.encode(nuevaPassword);
+        log.info("Nueva contraseña codificada");
+
+        usuario.setPassword(encodedPassword);
+        Usuario usuarioGuardado = usuarioRepository.save(usuario);
+        log.info("Usuario guardado. ¿Es la contraseña correcta?: " +
+                passwordEncoder.matches(nuevaPassword, usuarioGuardado.getPassword()));
     }
 
     private UsuarioDTO convertirADTO(Usuario usuario) {

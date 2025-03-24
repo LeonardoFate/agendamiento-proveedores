@@ -11,6 +11,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/usuarios")
@@ -57,7 +58,8 @@ public class UsuarioController {
     @PatchMapping("/{id}/cambiar-password")
     public ResponseEntity<Void> cambiarPassword(
             @PathVariable Long id,
-            @RequestParam String nuevaPassword) {
+            @RequestBody Map<String, String> requestBody) {
+        String nuevaPassword = requestBody.get("nuevaPassword");
         usuarioService.cambiarPassword(id, nuevaPassword);
         return ResponseEntity.noContent().build();
     }

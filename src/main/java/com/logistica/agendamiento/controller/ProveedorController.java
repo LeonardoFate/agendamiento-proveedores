@@ -49,4 +49,9 @@ public class ProveedorController {
             @RequestParam Boolean estado) {
         return ResponseEntity.ok(proveedorService.cambiarEstadoProveedor(id, estado));
     }
+    @GetMapping("/usuario/{usuarioId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PROVEEDOR')")
+    public ResponseEntity<ProveedorDTO> obtenerProveedorPorUsuarioId(@PathVariable Long usuarioId) {
+        return ResponseEntity.ok(proveedorService.obtenerProveedorPorUsuarioId(usuarioId));
+    }
 }

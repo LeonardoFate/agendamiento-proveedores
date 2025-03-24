@@ -98,4 +98,10 @@ public class ProveedorServiceImpl implements ProveedorService {
 
         return dto;
     }
+    @Override
+    public ProveedorDTO obtenerProveedorPorUsuarioId(Long usuarioId) {
+        Proveedor proveedor = proveedorRepository.findByUsuarioId(usuarioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Proveedor no encontrado para usuario ID: " + usuarioId));
+        return convertirADTO(proveedor);
+    }
 }

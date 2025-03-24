@@ -15,4 +15,6 @@ public interface ProveedorService {
     ProveedorDTO actualizarProveedor(Long id, ProveedorDTO proveedorDTO);
 
     ProveedorDTO cambiarEstadoProveedor(Long id, Boolean estado);
+
+    ProveedorDTO obtenerProveedorPorUsuarioId(Long usuarioId);
 }
