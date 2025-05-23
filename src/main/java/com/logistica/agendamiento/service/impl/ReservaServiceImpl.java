@@ -14,9 +14,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,6 +32,7 @@ public class ReservaServiceImpl implements ReservaService {
     private final TransporteRepository transporteRepository;
     private final TransportistaRepository transportistaRepository;
     private final EmailService emailService;
+    private final UsuarioRepository usuarioRepository;
 
     @Override
     public List<ReservaDTO> obtenerTodasLasReservas() {
@@ -409,5 +411,266 @@ public class ReservaServiceImpl implements ReservaService {
         dto.setUpdatedAt(reserva.getUpdatedAt());
 
         return dto;
+    }
+    @Override
+    public ReservaDetalleDTO obtenerReservaPendienteProveedor(String username, LocalDate fecha) {
+        Usuario usuario = usuarioRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + username));
+
+        Proveedor proveedor = proveedorRepository.findByUsuarioId(usuario.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Proveedor no encontrado para el usuario: " + username));
+
+        Optional<Reserva> reservaOpt = reservaRepository.findByProveedorAndFechaAndEstado(
+                proveedor, fecha, EstadoReserva.PENDIENTE_CONFIRMACION);
+
+        if (reservaOpt.isEmpty()) {
+            throw new ResourceNotFoundException("No hay reserva pendiente de confirmación para la fecha: " + fecha);
+        }
+
+        return convertirADetalleDTO(reservaOpt.get());
+    }
+
+    @Override
+    @Transactional
+    public ReservaDetalleDTO completarDatosReserva(ReservaDTO reservaDTO, String username) {
+        Usuario usuario = usuarioRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + username));
+
+        Proveedor proveedor = proveedorRepository.findByUsuarioId(usuario.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Proveedor no encontrado para el usuario: " + username));
+
+        // Buscar reserva pendiente para esa fecha
+        Optional<Reserva> reservaOpt = reservaRepository.findByProveedorAndFechaAndEstado(
+                proveedor, reservaDTO.getFecha(), EstadoReserva.PENDIENTE_CONFIRMACION);
+
+        if (reservaOpt.isEmpty()) {
+            throw new ResourceNotFoundException("No hay reserva pendiente para confirmar en la fecha: " + reservaDTO.getFecha());
+        }
+
+        Reserva reserva = reservaOpt.get();
+
+        // Actualizar datos de transporte
+        Transporte transporte = reserva.getTransporte();
+        transporte.setTipo(reservaDTO.getTransporteTipo());
+        transporte.setMarca(reservaDTO.getTransporteMarca());
+        transporte.setModelo(reservaDTO.getTransporteModelo());
+        transporte.setPlaca(reservaDTO.getTransportePlaca());
+        transporte.setCapacidad(reservaDTO.getTransporteCapacidad());
+
+        transporteRepository.save(transporte);
+
+        // Limpiar transportistas anteriores
+        transportistaRepository.deleteAll(transporte.getTransportistas());
+
+        // Crear nuevos transportistas
+        List<Transportista> transportistas = new ArrayList<>();
+
+        // Conductor
+        Transportista conductor = new Transportista();
+        conductor.setTransporte(transporte);
+        conductor.setNombres(reservaDTO.getConductorNombres());
+        conductor.setApellidos(reservaDTO.getConductorApellidos());
+        conductor.setCedula(reservaDTO.getConductorCedula());
+        conductor.setEsConductor(true);
+        transportistas.add(conductor);
+
+        // Ayudantes
+        if (reservaDTO.getAyudantes() != null && !reservaDTO.getAyudantes().isEmpty()) {
+            for (AyudanteDTO ayudanteDTO : reservaDTO.getAyudantes()) {
+                Transportista ayudante = new Transportista();
+                ayudante.setTransporte(transporte);
+                ayudante.setNombres(ayudanteDTO.getNombres());
+                ayudante.setApellidos(ayudanteDTO.getApellidos());
+                ayudante.setCedula(ayudanteDTO.getCedula());
+                ayudante.setEsConductor(false);
+                transportistas.add(ayudante);
+            }
+        }
+
+        transportistaRepository.saveAll(transportistas);
+
+        // Actualizar datos adicionales de la reserva
+        if (reservaDTO.getNumeroPalets() != null) {
+            reserva.setDescripcion("Palets: " + reservaDTO.getNumeroPalets() +
+                    (reservaDTO.getDescripcion() != null ? " - " + reservaDTO.getDescripcion() : ""));
+        }
+
+        // Cambiar estado a CONFIRMADA
+        reserva.setEstado(EstadoReserva.CONFIRMADA);
+
+        Reserva reservaActualizada = reservaRepository.save(reserva);
+
+        // Enviar notificación
+        ReservaDetalleDTO reservaDetalle = convertirADetalleDTO(reservaActualizada);
+        emailService.enviarConfirmacionReserva(reservaDetalle, proveedor.getEmail());
+
+        return reservaDetalle;
+    }
+
+    @Override
+    @Transactional
+    public ReservaDetalleDTO actualizarDatosTransporteReserva(Long id, ReservaDTO reservaDTO, String username) {
+        Usuario usuario = usuarioRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + username));
+
+        Proveedor proveedor = proveedorRepository.findByUsuarioId(usuario.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Proveedor no encontrado para el usuario: " + username));
+
+        Reserva reserva = reservaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Reserva no encontrada con ID: " + id));
+
+        // Verificar que la reserva pertenece al proveedor
+        if (!reserva.getProveedor().getId().equals(proveedor.getId())) {
+            throw new BadRequestException("No tiene permisos para editar esta reserva");
+        }
+
+        // Solo puede editar si está en CONFIRMADA o PENDIENTE_CONFIRMACION
+        if (reserva.getEstado() != EstadoReserva.CONFIRMADA &&
+                reserva.getEstado() != EstadoReserva.PENDIENTE_CONFIRMACION) {
+            throw new BadRequestException("Solo se pueden editar reservas confirmadas o pendientes de confirmación");
+        }
+
+        // Actualizar solo datos de transporte
+        Transporte transporte = reserva.getTransporte();
+        transporte.setTipo(reservaDTO.getTransporteTipo());
+        transporte.setMarca(reservaDTO.getTransporteMarca());
+        transporte.setModelo(reservaDTO.getTransporteModelo());
+        transporte.setPlaca(reservaDTO.getTransportePlaca());
+        transporte.setCapacidad(reservaDTO.getTransporteCapacidad());
+
+        transporteRepository.save(transporte);
+
+        // Actualizar transportistas
+        transportistaRepository.deleteAll(transporte.getTransportistas());
+
+        List<Transportista> transportistas = new ArrayList<>();
+
+        // Conductor
+        Transportista conductor = new Transportista();
+        conductor.setTransporte(transporte);
+        conductor.setNombres(reservaDTO.getConductorNombres());
+        conductor.setApellidos(reservaDTO.getConductorApellidos());
+        conductor.setCedula(reservaDTO.getConductorCedula());
+        conductor.setEsConductor(true);
+        transportistas.add(conductor);
+
+        // Ayudantes
+        if (reservaDTO.getAyudantes() != null && !reservaDTO.getAyudantes().isEmpty()) {
+            for (AyudanteDTO ayudanteDTO : reservaDTO.getAyudantes()) {
+                Transportista ayudante = new Transportista();
+                ayudante.setTransporte(transporte);
+                ayudante.setNombres(ayudanteDTO.getNombres());
+                ayudante.setApellidos(ayudanteDTO.getApellidos());
+                ayudante.setCedula(ayudanteDTO.getCedula());
+                ayudante.setEsConductor(false);
+                transportistas.add(ayudante);
+            }
+        }
+
+        transportistaRepository.saveAll(transportistas);
+
+        // Actualizar descripción con palets
+        if (reservaDTO.getNumeroPalets() != null) {
+            reserva.setDescripcion("Palets: " + reservaDTO.getNumeroPalets() +
+                    (reservaDTO.getDescripcion() != null ? " - " + reservaDTO.getDescripcion() : ""));
+        }
+
+        Reserva reservaActualizada = reservaRepository.save(reserva);
+
+        return convertirADetalleDTO(reservaActualizada);
+    }
+
+    @Override
+    @Transactional
+    public void cancelarReservaProveedor(Long id, String username) {
+        Usuario usuario = usuarioRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + username));
+
+        Proveedor proveedor = proveedorRepository.findByUsuarioId(usuario.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Proveedor no encontrado para el usuario: " + username));
+
+        Reserva reserva = reservaRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Reserva no encontrada con ID: " + id));
+
+        // Verificar que la reserva pertenece al proveedor
+        if (!reserva.getProveedor().getId().equals(proveedor.getId())) {
+            throw new BadRequestException("No tiene permisos para cancelar esta reserva");
+        }
+
+        // Solo puede cancelar si está en CONFIRMADA o PENDIENTE_CONFIRMACION
+        if (reserva.getEstado() != EstadoReserva.CONFIRMADA &&
+                reserva.getEstado() != EstadoReserva.PENDIENTE_CONFIRMACION) {
+            throw new BadRequestException("Solo se pueden cancelar reservas confirmadas o pendientes de confirmación");
+        }
+
+        reserva.setEstado(EstadoReserva.CANCELADA);
+        reservaRepository.save(reserva);
+
+        // Enviar notificación
+        ReservaDetalleDTO reservaDetalle = convertirADetalleDTO(reserva);
+        emailService.enviarNotificacionCancelacion(reservaDetalle, proveedor.getEmail());
+    }
+
+    @Override
+    public List<ReservaDTO> obtenerReservasDeProveedor(String username, LocalDate fechaInicio, LocalDate fechaFin) {
+        Usuario usuario = usuarioRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + username));
+
+        Proveedor proveedor = proveedorRepository.findByUsuarioId(usuario.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Proveedor no encontrado para el usuario: " + username));
+
+        List<Reserva> reservas;
+
+        if (fechaInicio != null && fechaFin != null) {
+            reservas = reservaRepository.findByProveedorAndFechaBetween(proveedor, fechaInicio, fechaFin);
+        } else {
+            reservas = reservaRepository.findByProveedor(proveedor);
+        }
+
+        return reservas.stream()
+                .map(this::convertirADTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Object obtenerEstadisticasProveedor(String username, LocalDate fechaInicio, LocalDate fechaFin) {
+        Usuario usuario = usuarioRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado: " + username));
+
+        Proveedor proveedor = proveedorRepository.findByUsuarioId(usuario.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Proveedor no encontrado para el usuario: " + username));
+
+        List<Reserva> reservas;
+
+        if (fechaInicio != null && fechaFin != null) {
+            reservas = reservaRepository.findByProveedorAndFechaBetween(proveedor, fechaInicio, fechaFin);
+        } else {
+            // Por defecto, últimos 30 días
+            LocalDate hace30Dias = LocalDate.now().minusDays(30);
+            reservas = reservaRepository.findByProveedorAndFechaBetween(proveedor, hace30Dias, LocalDate.now());
+        }
+
+        // Calcular estadísticas
+        long totalReservas = reservas.size();
+        long completadas = reservas.stream().mapToLong(r -> r.getEstado() == EstadoReserva.COMPLETADA ? 1 : 0).sum();
+        long canceladas = reservas.stream().mapToLong(r -> r.getEstado() == EstadoReserva.CANCELADA ? 1 : 0).sum();
+        long pendientes = reservas.stream().mapToLong(r -> r.getEstado() == EstadoReserva.PENDIENTE_CONFIRMACION ? 1 : 0).sum();
+        long confirmadas = reservas.stream().mapToLong(r -> r.getEstado() == EstadoReserva.CONFIRMADA ? 1 : 0).sum();
+
+        Map<EstadoReserva, Long> porEstado = reservas.stream()
+                .collect(Collectors.groupingBy(Reserva::getEstado, Collectors.counting()));
+
+        return Map.of(
+                "totalReservas", totalReservas,
+                "completadas", completadas,
+                "canceladas", canceladas,
+                "pendientesConfirmacion", pendientes,
+                "confirmadas", confirmadas,
+                "distribucionPorEstado", porEstado,
+                "periodoConsultado", Map.of(
+                        "fechaInicio", fechaInicio != null ? fechaInicio : LocalDate.now().minusDays(30),
+                        "fechaFin", fechaFin != null ? fechaFin : LocalDate.now()
+                )
+        );
     }
 }

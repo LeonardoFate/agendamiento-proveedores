@@ -1,6 +1,5 @@
 package com.logistica.agendamiento.service.impl;
 
-import com.logistica.agendamiento.config.FileStorageProperties;
 import com.logistica.agendamiento.exception.FileStorageException;
 import com.logistica.agendamiento.exception.ResourceNotFoundException;
 import com.logistica.agendamiento.service.FileStorageService;

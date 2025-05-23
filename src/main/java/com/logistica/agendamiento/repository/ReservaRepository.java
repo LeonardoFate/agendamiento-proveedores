@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface ReservaRepository extends JpaRepository<Reserva, Long> {
@@ -30,11 +31,9 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
 
     List<Reserva> findByFechaAndArea(LocalDate fecha, Area area);
 
-    @Query("SELECT r FROM Reserva r WHERE r.fecha = :fecha AND r.estado = :estado")
-    List<Reserva> findByFechaAndEstado(@Param("fecha") LocalDate fecha, @Param("estado") EstadoReserva estado);
+    List<Reserva> findByProveedorAndFecha(Proveedor proveedor, LocalDate fecha);
 
-    @Query("SELECT DISTINCT r.fecha FROM Reserva r WHERE r.fecha >= :fechaInicio AND r.fecha <= :fechaFin")
-    List<LocalDate> findFechasConReservas(
-            @Param("fechaInicio") LocalDate fechaInicio,
-            @Param("fechaFin") LocalDate fechaFin);
+    Optional<Reserva> findByProveedorAndFechaAndEstado(Proveedor proveedor, LocalDate fecha, EstadoReserva estado);
+
+    List<Reserva> findByProveedorAndFechaBetween(Proveedor proveedor, LocalDate fechaInicio, LocalDate fechaFin);
 }

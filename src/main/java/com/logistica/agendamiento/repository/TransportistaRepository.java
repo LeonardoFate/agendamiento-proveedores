@@ -16,4 +16,7 @@ public interface TransportistaRepository extends JpaRepository<Transportista, Lo
     List<Transportista> findByEsConductorTrue();
 
     Optional<Transportista> findByCedula(String cedula);
+
+    void deleteAllByTransporte(Transporte transporte);
+
 }

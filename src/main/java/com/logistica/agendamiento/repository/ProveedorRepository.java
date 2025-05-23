@@ -21,4 +21,6 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Long> {
     boolean existsByEmail(String email);
 
     Optional<Proveedor> findByUsuarioId(Long usuarioId);
+    Optional<Proveedor> findByNombre(String nombre);
+
 }

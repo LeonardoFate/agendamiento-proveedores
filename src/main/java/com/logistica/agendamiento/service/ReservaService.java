@@ -31,4 +31,17 @@ public interface ReservaService {
 
     void cancelarReserva(Long id);
 
-                                                                                        }
+    // ✅ NUEVOS MÉTODOS PARA PROVEEDORES
+    ReservaDetalleDTO obtenerReservaPendienteProveedor(String username, LocalDate fecha);
+
+    ReservaDetalleDTO completarDatosReserva(ReservaDTO reservaDTO, String username);
+
+    ReservaDetalleDTO actualizarDatosTransporteReserva(Long id, ReservaDTO reservaDTO, String username);
+
+    void cancelarReservaProveedor(Long id, String username);
+
+    List<ReservaDTO> obtenerReservasDeProveedor(String username, LocalDate fechaInicio, LocalDate fechaFin);
+
+    Object obtenerEstadisticasProveedor(String username, LocalDate fechaInicio, LocalDate fechaFin);
+
+}

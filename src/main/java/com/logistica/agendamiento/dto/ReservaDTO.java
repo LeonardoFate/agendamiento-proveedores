@@ -4,6 +4,7 @@ import com.logistica.agendamiento.entity.enums.EstadoReserva;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
 import java.time.LocalDate;
@@ -16,26 +17,34 @@ public class ReservaDTO {
 
     private Long id;
 
+    // ✅ CAMPOS QUE MANTIENE (para admin y proveedor)
     @NotNull(message = "El ID del proveedor es obligatorio")
     private Long proveedorId;
 
     private String proveedorNombre;
-
-    private String areaNombre;
-
-    private Integer andenNumero;
-
-    private String tipoServicioNombre;
 
     @NotNull(message = "La fecha es obligatoria")
     @FutureOrPresent(message = "La fecha debe ser hoy o futura")
     private LocalDate fecha;
 
     private EstadoReserva estado;
-
     private String descripcion;
 
-    // Datos del transporte
+    // ✅ NUEVO: Número de palets (obligatorio para proveedor)
+    @Positive(message = "El número de palets debe ser mayor a 0")
+    private Integer numeroPalets;
+
+    // ✅ CAMPOS QUE SOLO USA EL ADMIN (vienen de plantilla para proveedor)
+    private Long areaId;
+    private String areaNombre;
+    private Long andenId;
+    private Integer andenNumero;
+    private Long tipoServicioId;
+    private String tipoServicioNombre;
+    private LocalTime horaInicio;
+    private LocalTime horaFin;
+
+    // ✅ DATOS DE TRANSPORTE (obligatorios para proveedor)
     @NotBlank(message = "El tipo de transporte es obligatorio")
     private String transporteTipo;
 
@@ -50,7 +59,7 @@ public class ReservaDTO {
 
     private String transporteCapacidad;
 
-    // Datos del conductor
+    // ✅ DATOS DEL CONDUCTOR (obligatorios para proveedor)
     @NotBlank(message = "Los nombres del conductor son obligatorios")
     private String conductorNombres;
 
@@ -60,6 +69,6 @@ public class ReservaDTO {
     @NotBlank(message = "La cédula del conductor es obligatoria")
     private String conductorCedula;
 
-    // Datos de los ayudantes
+    // ✅ DATOS DE LOS AYUDANTES (opcional para proveedor)
     private List<AyudanteDTO> ayudantes = new ArrayList<>();
 }
