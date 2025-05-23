@@ -1,6 +1,5 @@
 package com.logistica.agendamiento.controller;
 
-import com.logistica.agendamiento.dto.DisponibilidadAndenDTO;
 import com.logistica.agendamiento.dto.ReservaDTO;
 import com.logistica.agendamiento.dto.ReservaDetalleDTO;
 import com.logistica.agendamiento.entity.enums.EstadoReserva;
@@ -89,11 +88,4 @@ public class ReservaController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/disponibilidad")
-    public ResponseEntity<List<DisponibilidadAndenDTO>> obtenerDisponibilidadPorFechaYArea(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
-            @RequestParam Long areaId,
-            @RequestParam(required = false) Long tipoServicioId) {
-        return ResponseEntity.ok(reservaService.obtenerDisponibilidadPorFechaYArea(fecha, areaId, tipoServicioId));
-    }
 }

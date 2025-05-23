@@ -1,6 +1,5 @@
 package com.logistica.agendamiento.service;
 
-import com.logistica.agendamiento.dto.DisponibilidadAndenDTO;
 import com.logistica.agendamiento.dto.ReservaDTO;
 import com.logistica.agendamiento.dto.ReservaDetalleDTO;
 import com.logistica.agendamiento.entity.enums.EstadoReserva;
@@ -32,5 +31,4 @@ public interface ReservaService {
 
     void cancelarReserva(Long id);
 
-    List<DisponibilidadAndenDTO> obtenerDisponibilidadPorFechaYArea(LocalDate fecha, Long areaId, Long tipoServicioId);
-}
+                                                                                        }

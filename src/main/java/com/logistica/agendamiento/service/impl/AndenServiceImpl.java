@@ -48,20 +48,6 @@ public class AndenServiceImpl implements AndenService {
                 .map(this::convertirADTO)
                 .collect(Collectors.toList());
     }
-
-    @Override
-    public List<AndenDTO> obtenerAndenesPorAreaYTipoServicio(Long areaId, Long tipoServicioId) {
-        Area area = areaRepository.findById(areaId)
-                .orElseThrow(() -> new ResourceNotFoundException("Área no encontrada con ID: " + areaId));
-
-        // Si el tipo de servicio es "Contenedor" (asumimos ID = 3), solo retornar andenes exclusivos
-        boolean esContenedor = tipoServicioId == 3;
-
-        return andenRepository.findByAreaAndExclusivoContenedor(area, esContenedor).stream()
-                .map(this::convertirADTO)
-                .collect(Collectors.toList());
-    }
-
     @Override
     public AndenDTO obtenerAndenPorId(Long id) {
         Anden anden = andenRepository.findById(id)

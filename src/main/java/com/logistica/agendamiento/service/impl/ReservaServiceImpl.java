@@ -111,28 +111,6 @@ public class ReservaServiceImpl implements ReservaService {
             throw new BadRequestException("El andén seleccionado no pertenece al área especificada");
         }
 
-        // Validar si el andén es adecuado para el tipo de servicio
-        boolean esContenedor = tipoServicio.getNombre().equalsIgnoreCase("Contenedor");
-        if (esContenedor && !anden.getExclusivoContenedor() || !esContenedor && anden.getExclusivoContenedor()) {
-            throw new BadRequestException("El andén seleccionado no es compatible con el tipo de servicio");
-        }
-
-        // Verificar disponibilidad del andén
-        if (anden.getEstado() != EstadoAnden.DISPONIBLE) {
-            throw new BadRequestException("El andén seleccionado no está disponible actualmente");
-        }
-
-        // Verificar si hay conflictos con otras reservas
-        List<Reserva> conflictos = reservaRepository.findConflictos(
-                reservaDTO.getFecha(),
-                anden,
-                reservaDTO.getHoraInicio(),
-                reservaDTO.getHoraFin());
-
-        if (!conflictos.isEmpty()) {
-            throw new BadRequestException("El horario seleccionado no está disponible para este andén");
-        }
-
         // Crear y guardar el transporte
         Transporte transporte = new Transporte();
         transporte.setTipo(reservaDTO.getTransporteTipo());
@@ -223,28 +201,6 @@ public class ReservaServiceImpl implements ReservaService {
             throw new BadRequestException("El andén seleccionado no es compatible con el tipo de servicio");
         }
 
-        // Verificar disponibilidad del andén para la nueva fecha/hora
-        if (!reserva.getAnden().getId().equals(anden.getId()) ||
-                !reserva.getFecha().equals(reservaDTO.getFecha()) ||
-                !reserva.getHoraInicio().equals(reservaDTO.getHoraInicio()) ||
-                !reserva.getHoraFin().equals(reservaDTO.getHoraFin())) {
-
-            // Verificar si hay conflictos con otras reservas
-            List<Reserva> conflictos = reservaRepository.findConflictos(
-                    reservaDTO.getFecha(),
-                    anden,
-                    reservaDTO.getHoraInicio(),
-                    reservaDTO.getHoraFin());
-
-            // Excluir la reserva actual de los conflictos
-            conflictos = conflictos.stream()
-                    .filter(r -> !r.getId().equals(id))
-                    .collect(Collectors.toList());
-
-            if (!conflictos.isEmpty()) {
-                throw new BadRequestException("El horario seleccionado no está disponible para este andén");
-            }
-        }
 
         // Actualizar datos de transporte
         Transporte transporte = reserva.getTransporte();
@@ -355,54 +311,6 @@ public class ReservaServiceImpl implements ReservaService {
         ReservaDetalleDTO reservaDetalle = convertirADetalleDTO(reserva);
         emailService.enviarNotificacionCancelacion(reservaDetalle, reserva.getProveedor().getEmail());
     }
-
-    @Override
-    public List<DisponibilidadAndenDTO> obtenerDisponibilidadPorFechaYArea(LocalDate fecha, Long areaId, Long tipoServicioId) {
-        Area area = areaRepository.findById(areaId)
-                .orElseThrow(() -> new ResourceNotFoundException("Área no encontrada con ID: " + areaId));
-
-        // Determinar si se requieren andenes exclusivos para contenedores
-        boolean requiereContenedor = false;
-        if (tipoServicioId != null) {
-            TipoServicio tipoServicio = tipoServicioRepository.findById(tipoServicioId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Tipo de servicio no encontrado con ID: " + tipoServicioId));
-            requiereContenedor = tipoServicio.getNombre().equalsIgnoreCase("Contenedor");
-        }
-
-        // Obtener todos los andenes del área que coincidan con el requisito de contenedor
-        List<Anden> andenes;
-        if (tipoServicioId != null) {
-            andenes = andenRepository.findByAreaAndExclusivoContenedor(area, requiereContenedor);
-        } else {
-            andenes = andenRepository.findByArea(area);
-        }
-
-        // Obtener todas las reservas para esa fecha y área
-        List<Reserva> reservasDelDia = reservaRepository.findByFechaAndArea(fecha, area);
-
-        // Generar disponibilidad para cada andén
-        return andenes.stream().map(anden -> {
-            DisponibilidadAndenDTO disponibilidad = new DisponibilidadAndenDTO();
-            disponibilidad.setAndenId(anden.getId());
-            disponibilidad.setNumero(anden.getNumero());
-            disponibilidad.setAreaId(area.getId());
-            disponibilidad.setAreaNombre(area.getNombre());
-            disponibilidad.setEstadoActual(anden.getEstado());
-            disponibilidad.setExclusivoContenedor(anden.getExclusivoContenedor());
-
-            // Filtrar reservas para este andén específico
-            List<HorarioReservadoDTO> horariosReservados = reservasDelDia.stream()
-                    .filter(r -> r.getAnden().getId().equals(anden.getId()))
-                    .filter(r -> r.getEstado() != EstadoReserva.CANCELADA)
-                    .map(r -> new HorarioReservadoDTO(r.getHoraInicio(), r.getHoraFin()))
-                    .collect(Collectors.toList());
-
-            disponibilidad.setHorariosReservados(horariosReservados);
-
-            return disponibilidad;
-        }).collect(Collectors.toList());
-    }
-
     private void validarTransicionEstado(EstadoReserva estadoActual, EstadoReserva nuevoEstado) {
         // Definir transiciones válidas
         switch (estadoActual) {

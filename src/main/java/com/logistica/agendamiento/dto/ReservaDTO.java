@@ -21,30 +21,15 @@ public class ReservaDTO {
 
     private String proveedorNombre;
 
-    @NotNull(message = "El ID del área es obligatorio")
-    private Long areaId;
-
     private String areaNombre;
 
-    @NotNull(message = "El ID del andén es obligatorio")
-    private Long andenId;
-
     private Integer andenNumero;
-
-    @NotNull(message = "El ID del tipo de servicio es obligatorio")
-    private Long tipoServicioId;
 
     private String tipoServicioNombre;
 
     @NotNull(message = "La fecha es obligatoria")
     @FutureOrPresent(message = "La fecha debe ser hoy o futura")
     private LocalDate fecha;
-
-    @NotNull(message = "La hora de inicio es obligatoria")
-    private LocalTime horaInicio;
-
-    @NotNull(message = "La hora de fin es obligatoria")
-    private LocalTime horaFin;
 
     private EstadoReserva estado;
 

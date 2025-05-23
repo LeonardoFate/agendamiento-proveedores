@@ -33,14 +33,6 @@ public interface ReservaRepository extends JpaRepository<Reserva, Long> {
     @Query("SELECT r FROM Reserva r WHERE r.fecha = :fecha AND r.estado = :estado")
     List<Reserva> findByFechaAndEstado(@Param("fecha") LocalDate fecha, @Param("estado") EstadoReserva estado);
 
-    @Query("SELECT r FROM Reserva r WHERE r.fecha = :fecha AND r.anden = :anden " +
-            "AND ((r.horaInicio <= :horaFin AND r.horaFin >= :horaInicio))")
-    List<Reserva> findConflictos(
-            @Param("fecha") LocalDate fecha,
-            @Param("anden") Anden anden,
-            @Param("horaInicio") LocalTime horaInicio,
-            @Param("horaFin") LocalTime horaFin);
-
     @Query("SELECT DISTINCT r.fecha FROM Reserva r WHERE r.fecha >= :fechaInicio AND r.fecha <= :fechaFin")
     List<LocalDate> findFechasConReservas(
             @Param("fechaInicio") LocalDate fechaInicio,

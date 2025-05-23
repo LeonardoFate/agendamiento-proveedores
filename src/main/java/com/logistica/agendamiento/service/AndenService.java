@@ -13,8 +13,6 @@ public interface AndenService {
 
     List<AndenDTO> obtenerAndenesPorAreaYEstado(Long areaId, EstadoAnden estado);
 
-    List<AndenDTO> obtenerAndenesPorAreaYTipoServicio(Long areaId, Long tipoServicioId);
-
     AndenDTO obtenerAndenPorId(Long id);
 
     AndenDTO crearAnden(AndenDTO andenDTO);

@@ -16,8 +16,6 @@ public interface AndenRepository extends JpaRepository<Anden, Long> {
 
     List<Anden> findByAreaAndEstado(Area area, EstadoAnden estado);
 
-    List<Anden> findByAreaAndExclusivoContenedor(Area area, Boolean exclusivoContenedor);
-
     Optional<Anden> findByAreaAndNumero(Area area, Integer numero);
 
     boolean existsByAreaAndNumero(Area area, Integer numero);

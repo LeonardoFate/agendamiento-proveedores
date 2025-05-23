@@ -36,13 +36,6 @@ public class AndenController {
         return ResponseEntity.ok(andenService.obtenerAndenesPorAreaYEstado(areaId, estado));
     }
 
-    @GetMapping("/area/{areaId}/tipo-servicio/{tipoServicioId}")
-    public ResponseEntity<List<AndenDTO>> obtenerAndenesPorAreaYTipoServicio(
-            @PathVariable Long areaId,
-            @PathVariable Long tipoServicioId) {
-        return ResponseEntity.ok(andenService.obtenerAndenesPorAreaYTipoServicio(areaId, tipoServicioId));
-    }
-
     @GetMapping("/{id}")
     public ResponseEntity<AndenDTO> obtenerAndenPorId(@PathVariable Long id) {
         return ResponseEntity.ok(andenService.obtenerAndenPorId(id));
