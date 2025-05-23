@@ -5,4 +5,5 @@ public enum Rol {
     GUARDIA,
     AGENTE,
     PROVEEDOR
+
 }
