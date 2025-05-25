@@ -104,18 +104,32 @@ public class PlantillaHorarioController {
     @DeleteMapping("/bulk-delete")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> eliminarPlantillasMultiple(@RequestBody List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "La lista de IDs está vacía o no fue enviada"
+            ));
+        }
+
         try {
             plantillaHorarioService.eliminarHorariosMultiple(ids);
 
             return ResponseEntity.ok(Map.of(
                     "mensaje", "Plantillas eliminadas exitosamente",
-                    "eli    minadas", ids.size()
+                    "eliminadas", ids.size()
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "error", "Uno o más IDs no existen",
+                    "detalle", e.getMessage()
             ));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "error", "Error al eliminar plantillas",
+            e.printStackTrace(); // Para ver el error completo en consola
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "error", "Error inesperado al eliminar plantillas",
                     "detalle", e.getMessage()
             ));
         }
     }
+
+
 }
