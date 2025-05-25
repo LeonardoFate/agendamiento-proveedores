@@ -100,4 +100,22 @@ public class PlantillaHorarioController {
                 "distribucionPorDia", porDia
         ));
     }
+
+    @DeleteMapping("/bulk-delete")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> eliminarPlantillasMultiple(@RequestBody List<Long> ids) {
+        try {
+            plantillaHorarioService.eliminarHorariosMultiple(ids);
+
+            return ResponseEntity.ok(Map.of(
+                    "mensaje", "Plantillas eliminadas exitosamente",
+                    "eli    minadas", ids.size()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Error al eliminar plantillas",
+                    "detalle", e.getMessage()
+            ));
+        }
+    }
 }

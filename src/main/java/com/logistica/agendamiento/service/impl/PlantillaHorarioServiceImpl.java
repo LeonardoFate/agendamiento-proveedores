@@ -125,8 +125,24 @@ public class PlantillaHorarioServiceImpl implements PlantillaHorarioService {
         PlantillaHorario plantilla = plantillaHorarioRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Plantilla de horario no encontrada con ID: " + id));
 
-        plantilla.setActivo(false);
-        plantillaHorarioRepository.save(plantilla);
+        // ✅ CAMBIO: Eliminar físicamente en lugar de soft delete
+        plantillaHorarioRepository.delete(plantilla);
+
+        log.info("Plantilla eliminada físicamente: {}", id);
+    }
+
+    @Transactional
+    public void eliminarHorariosMultiple(List<Long> ids) {
+        List<PlantillaHorario> plantillas = plantillaHorarioRepository.findAllById(ids);
+
+        if (plantillas.isEmpty()) {
+            throw new ResourceNotFoundException("No se encontraron plantillas con los IDs proporcionados");
+        }
+
+        // Eliminar físicamente todas las plantillas
+        plantillaHorarioRepository.deleteAll(plantillas);
+
+        log.info("Eliminadas {} plantillas físicamente", plantillas.size());
     }
 
     @Override

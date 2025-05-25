@@ -40,4 +40,6 @@ public interface PlantillaHorarioService {
     // Conversiones
     List<PlantillaHorarioDTO> convertirADTOList(List<PlantillaHorario> plantillas);
     PlantillaHorarioDTO convertirADTO(PlantillaHorario plantilla);
+    void eliminarHorariosMultiple(List<Long> ids);
+
 }
