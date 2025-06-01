@@ -16,7 +16,7 @@ public class ReservaScheduler {
     private final PlantillaHorarioService plantillaHorarioService;
 
     // Generar reservas automáticamente todos los días a las 23:00 para el día siguiente
-    @Scheduled(cron = "0 0 23 * * *") // 23:00 todos los días
+    @Scheduled(cron = "0 * * * * *") // 23:00 todos los días
     public void generarReservasDelDiaSiguiente() {
         try {
             LocalDate manana = LocalDate.now().plusDays(1);

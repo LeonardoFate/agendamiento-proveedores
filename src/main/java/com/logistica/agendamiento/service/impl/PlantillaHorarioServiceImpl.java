@@ -406,9 +406,11 @@ public class PlantillaHorarioServiceImpl implements PlantillaHorarioService {
         reserva.setEstado(EstadoReserva.PENDIENTE_CONFIRMACION);
         reserva.setDescripcion("PRE-RESERVA: Proveedor debe seleccionar área, andén, tipo de servicio y completar datos de transporte");
 
-        reservaRepository.save(reserva);
+        // ✅ Los campos area, anden, tipoServicio, transporte quedan NULL
+        // hasta que el proveedor los complete
 
-        log.info("PRE-RESERVA creada para proveedor {} en fecha {} - Proveedor debe completar TODOS los datos",
+        reservaRepository.save(reserva);
+        log.info("✅ PRE-RESERVA básica creada para proveedor {} en fecha {}",
                 plantilla.getProveedor().getNombre(), fecha);
     }
 

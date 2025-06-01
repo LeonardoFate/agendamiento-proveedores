@@ -28,23 +28,23 @@ public class Reserva {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "proveedor_id", nullable = false)
+    @JoinColumn(name = "proveedor_id", nullable = true)
     private Proveedor proveedor;
 
     @ManyToOne
-    @JoinColumn(name = "area_id", nullable = false)
+    @JoinColumn(name = "area_id", nullable = true)
     private Area area;
 
     @ManyToOne
-    @JoinColumn(name = "anden_id", nullable = false)
+    @JoinColumn(name = "anden_id", nullable = true)
     private Anden anden;
 
     @ManyToOne
-    @JoinColumn(name = "tipo_servicio_id", nullable = false)
+    @JoinColumn(name = "tipo_servicio_id", nullable = true)
     private TipoServicio tipoServicio;
 
     @ManyToOne
-    @JoinColumn(name = "transporte_id", nullable = false)
+    @JoinColumn(name = "transporte_id", nullable = true)
     private Transporte transporte;
 
     @Column(nullable = false)
