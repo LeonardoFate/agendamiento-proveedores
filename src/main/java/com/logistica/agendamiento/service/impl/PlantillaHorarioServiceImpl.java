@@ -39,6 +39,7 @@ public class PlantillaHorarioServiceImpl implements PlantillaHorarioService {
     private final TransporteRepository transporteRepository;
     private final ExcelProcessingService excelProcessingService;
 
+
     @Override
     @Transactional
     public List<PlantillaHorario> cargarDesdeExcel(MultipartFile archivo) {
@@ -51,19 +52,29 @@ public class PlantillaHorarioServiceImpl implements PlantillaHorarioService {
             throw new BadRequestException("El archivo Excel no contiene datos válidos");
         }
 
-        // Desactivar plantillas anteriores
+        // ✅ CAMBIO: Eliminar físicamente las plantillas anteriores
         List<PlantillaHorario> plantillasAnteriores = plantillaHorarioRepository.findByActivoTrue();
-        plantillasAnteriores.forEach(p -> p.setActivo(false));
-        plantillaHorarioRepository.saveAll(plantillasAnteriores);
+        if (!plantillasAnteriores.isEmpty()) {
+            log.info("Eliminando {} plantillas anteriores físicamente", plantillasAnteriores.size());
+            plantillaHorarioRepository.deleteAll(plantillasAnteriores); // ← ELIMINACIÓN FÍSICA
+        }
 
         // ✅ Crear nuevas plantillas SIN asignación automática
         List<PlantillaHorario> nuevasPlantillas = new ArrayList<>();
         for (PlantillaHorarioDTO dto : plantillasDTO) {
             PlantillaHorario plantilla = convertirDeDTO(dto);
 
-            // ❌ NO asignar NINGÚN recurso automáticamente
-            // ❌ NO llamar asignarRecursosAutomaticamente(plantilla);
-            // Los campos area, anden, tipoServicio quedan NULL
+            // ✅ ASEGURAR que NO tenga recursos asignados
+            plantilla.setArea(null);
+            plantilla.setAnden(null);
+            plantilla.setTipoServicio(null);
+
+            log.debug("Creando plantilla para {} en {}: area={}, anden={}, tipoServicio={}",
+                    plantilla.getProveedor().getNombre(),
+                    plantilla.getDia(),
+                    plantilla.getArea(),
+                    plantilla.getAnden(),
+                    plantilla.getTipoServicio());
 
             nuevasPlantillas.add(plantilla);
         }
@@ -156,6 +167,7 @@ public class PlantillaHorarioServiceImpl implements PlantillaHorarioService {
         log.info("Plantilla eliminada físicamente: {}", id);
     }
 
+    @Override
     @Transactional
     public void eliminarHorariosMultiple(List<Long> ids) {
         List<PlantillaHorario> plantillas = plantillaHorarioRepository.findAllById(ids);
@@ -164,7 +176,7 @@ public class PlantillaHorarioServiceImpl implements PlantillaHorarioService {
             throw new ResourceNotFoundException("No se encontraron plantillas con los IDs proporcionados");
         }
 
-        // Eliminar físicamente todas las plantillas
+        // ✅ Eliminar físicamente todas las plantillas
         plantillaHorarioRepository.deleteAll(plantillas);
 
         log.info("Eliminadas {} plantillas físicamente", plantillas.size());
