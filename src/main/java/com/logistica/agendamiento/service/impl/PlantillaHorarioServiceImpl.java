@@ -56,18 +56,21 @@ public class PlantillaHorarioServiceImpl implements PlantillaHorarioService {
         plantillasAnteriores.forEach(p -> p.setActivo(false));
         plantillaHorarioRepository.saveAll(plantillasAnteriores);
 
-        // Crear nuevas plantillas SIN asignación automática
+        // ✅ Crear nuevas plantillas SIN asignación automática
         List<PlantillaHorario> nuevasPlantillas = new ArrayList<>();
         for (PlantillaHorarioDTO dto : plantillasDTO) {
             PlantillaHorario plantilla = convertirDeDTO(dto);
+
+            // ❌ NO asignar NINGÚN recurso automáticamente
             // ❌ NO llamar asignarRecursosAutomaticamente(plantilla);
-            // Solo guardar los datos básicos de la plantilla
+            // Los campos area, anden, tipoServicio quedan NULL
+
             nuevasPlantillas.add(plantilla);
         }
 
         List<PlantillaHorario> plantillasGuardadas = plantillaHorarioRepository.saveAll(nuevasPlantillas);
 
-        log.info("Cargadas {} plantillas de horarios desde Excel (sin asignación automática)", plantillasGuardadas.size());
+        log.info("Cargadas {} plantillas de horarios desde Excel (SIN recursos automáticos)", plantillasGuardadas.size());
         return plantillasGuardadas;
     }
 
@@ -363,39 +366,20 @@ public class PlantillaHorarioServiceImpl implements PlantillaHorarioService {
     private void crearReservaDesdePlugantilla(PlantillaHorario plantilla, LocalDate fecha) {
         Reserva reserva = new Reserva();
 
-        // ✅ DATOS DE LA PLANTILLA (solo lo básico)
+        // ✅ SOLO datos de la plantilla (fecha y horarios)
         reserva.setProveedor(plantilla.getProveedor());
         reserva.setFecha(fecha);
         reserva.setHoraInicio(plantilla.getHoraInicio());
         reserva.setHoraFin(plantilla.getHoraFin());
 
-        // 🔴 DATOS QUE EL PROVEEDOR DEBE COMPLETAR - Crear registros temporales
-
-        // Área temporal (proveedor debe elegir)
-        Area areaTemporal = crearAreaTemporal();
-        reserva.setArea(areaTemporal);
-
-        // Andén temporal (proveedor debe elegir)
-        Anden andenTemporal = crearAndenTemporal(areaTemporal);
-        reserva.setAnden(andenTemporal);
-
-        // Tipo servicio temporal (proveedor debe elegir)
-        TipoServicio tipoTemporal = crearTipoServicioTemporal();
-        reserva.setTipoServicio(tipoTemporal);
-
-        // Transporte temporal (proveedor debe completar)
-        Transporte transporteTemporal = crearTransporteTemporal();
-        reserva.setTransporte(transporteTemporal);
-
-        // ✅ ESTADO: PENDIENTE_CONFIRMACION
+        // ✅ ESTADO: PENDIENTE_CONFIRMACION (proveedor debe completar TODO)
         reserva.setEstado(EstadoReserva.PENDIENTE_CONFIRMACION);
-        reserva.setDescripcion("PRE-RESERVA: Proveedor debe completar área, andén, tipo servicio y datos de transporte");
+        reserva.setDescripcion("PRE-RESERVA: Proveedor debe seleccionar área, andén, tipo de servicio y completar datos de transporte");
 
         reservaRepository.save(reserva);
-        log.info("PRE-RESERVA creada para proveedor {} en fecha {}",
+        log.info("PRE-RESERVA creada (sin recursos) para proveedor {} en fecha {}",
                 plantilla.getProveedor().getNombre(), fecha);
     }
-
     // Métodos auxiliares para crear registros temporales
     private Area crearAreaTemporal() {
         // Buscar si ya existe un área "PENDIENTE"
