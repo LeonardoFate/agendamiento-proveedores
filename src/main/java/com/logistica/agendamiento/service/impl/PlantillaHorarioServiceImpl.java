@@ -102,7 +102,11 @@ public class PlantillaHorarioServiceImpl implements PlantillaHorarioService {
         }
 
         PlantillaHorario plantilla = convertirDeDTO(dto);
-        asignarRecursosAutomaticamente(plantilla);
+
+        // ✅ CAMBIO: NO asignar recursos automáticamente
+        // ❌ asignarRecursosAutomaticamente(plantilla);
+        // Los campos area, anden, tipoServicio quedan NULL para que el proveedor los seleccione
+
         return plantillaHorarioRepository.save(plantilla);
     }
 
@@ -118,8 +122,24 @@ public class PlantillaHorarioServiceImpl implements PlantillaHorarioService {
         plantilla.setHoraFin(dto.getHoraFin());
         plantilla.setTiempoDescarga(dto.getTiempoDescarga());
 
-        // Reasignar recursos si es necesario
-        asignarRecursosAutomaticamente(plantilla);
+        // ✅ CAMBIO: Solo asignar recursos si vienen especificados en el DTO
+        if (dto.getAreaId() != null) {
+            Area area = areaRepository.findById(dto.getAreaId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Área no encontrada"));
+            plantilla.setArea(area);
+        }
+
+        if (dto.getAndenId() != null) {
+            Anden anden = andenRepository.findById(dto.getAndenId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Andén no encontrado"));
+            plantilla.setAnden(anden);
+        }
+
+        if (dto.getTipoServicioId() != null) {
+            TipoServicio tipoServicio = tipoServicioRepository.findById(dto.getTipoServicioId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Tipo de servicio no encontrado"));
+            plantilla.setTipoServicio(tipoServicio);
+        }
 
         return plantillaHorarioRepository.save(plantilla);
     }
@@ -366,75 +386,21 @@ public class PlantillaHorarioServiceImpl implements PlantillaHorarioService {
     private void crearReservaDesdePlugantilla(PlantillaHorario plantilla, LocalDate fecha) {
         Reserva reserva = new Reserva();
 
-        // ✅ SOLO datos de la plantilla (fecha y horarios)
+        // ✅ SOLO datos básicos de la plantilla
         reserva.setProveedor(plantilla.getProveedor());
         reserva.setFecha(fecha);
         reserva.setHoraInicio(plantilla.getHoraInicio());
         reserva.setHoraFin(plantilla.getHoraFin());
-
-        // ✅ ESTADO: PENDIENTE_CONFIRMACION (proveedor debe completar TODO)
         reserva.setEstado(EstadoReserva.PENDIENTE_CONFIRMACION);
         reserva.setDescripcion("PRE-RESERVA: Proveedor debe seleccionar área, andén, tipo de servicio y completar datos de transporte");
 
         reservaRepository.save(reserva);
-        log.info("PRE-RESERVA creada (sin recursos) para proveedor {} en fecha {}",
+
+        log.info("PRE-RESERVA creada para proveedor {} en fecha {} - Proveedor debe completar TODOS los datos",
                 plantilla.getProveedor().getNombre(), fecha);
     }
-    // Métodos auxiliares para crear registros temporales
-    private Area crearAreaTemporal() {
-        // Buscar si ya existe un área "PENDIENTE"
-        Optional<Area> areaTemporal = areaRepository.findByNombre("PENDIENTE_SELECCION");
-        if (areaTemporal.isPresent()) {
-            return areaTemporal.get();
-        }
 
-        // Crear área temporal
-        Area area = new Area();
-        area.setNombre("PENDIENTE_SELECCION");
-        area.setDescripcion("Área temporal - Proveedor debe seleccionar área real");
-        return areaRepository.save(area);
-    }
 
-    private Anden crearAndenTemporal(Area area) {
-        // Buscar andén temporal existente
-        Optional<Anden> andenOpt = andenRepository.findByAreaAndNumero(area, 0);
-        if (andenOpt.isPresent()) {
-            return andenOpt.get();
-        }
-
-        // Crear andén temporal
-        Anden anden = new Anden();
-        anden.setArea(area);
-        anden.setNumero(0); // Número 0 = temporal
-        anden.setEstado(EstadoAnden.NO_DISPONIBLE);
-        anden.setCapacidad("PENDIENTE");
-        anden.setExclusivoContenedor(false);
-        return andenRepository.save(anden);
-    }
-
-    private TipoServicio crearTipoServicioTemporal() {
-        // Buscar tipo temporal existente
-        Optional<TipoServicio> tipoOpt = tipoServicioRepository.findByNombre("PENDIENTE_SELECCION");
-        if (tipoOpt.isPresent()) {
-            return tipoOpt.get();
-        }
-
-        // Crear tipo temporal
-        TipoServicio tipo = new TipoServicio();
-        tipo.setNombre("PENDIENTE_SELECCION");
-        tipo.setDescripcion("Tipo temporal - Proveedor debe seleccionar tipo real");
-        return tipoServicioRepository.save(tipo);
-    }
-
-    private Transporte crearTransporteTemporal() {
-        Transporte transporte = new Transporte();
-        transporte.setTipo("PENDIENTE");
-        transporte.setMarca("PENDIENTE");
-        transporte.setModelo("PENDIENTE");
-        transporte.setPlaca("TEMP-" + System.currentTimeMillis()); // Placa única temporal
-        transporte.setCapacidad("PENDIENTE");
-        return transporteRepository.save(transporte);
-    }
     private DiaSemana convertirDayOfWeekADiaSemana(DayOfWeek dayOfWeek) {
         return switch (dayOfWeek) {
             case MONDAY -> DiaSemana.LUNES;
