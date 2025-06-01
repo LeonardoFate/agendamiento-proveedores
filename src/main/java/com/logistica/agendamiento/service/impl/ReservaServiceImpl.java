@@ -10,6 +10,7 @@ import com.logistica.agendamiento.repository.*;
 import com.logistica.agendamiento.service.EmailService;
 import com.logistica.agendamiento.service.ReservaService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ReservaServiceImpl implements ReservaService {
 
     private final ReservaRepository reservaRepository;
@@ -439,33 +441,51 @@ public class ReservaServiceImpl implements ReservaService {
         Proveedor proveedor = proveedorRepository.findByUsuarioId(usuario.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Proveedor no encontrado para el usuario: " + username));
 
-        // Buscar reserva pendiente para esa fecha
+        // Buscar PRE-RESERVA pendiente para esa fecha
         Optional<Reserva> reservaOpt = reservaRepository.findByProveedorAndFechaAndEstado(
                 proveedor, reservaDTO.getFecha(), EstadoReserva.PENDIENTE_CONFIRMACION);
 
         if (reservaOpt.isEmpty()) {
-            throw new ResourceNotFoundException("No hay reserva pendiente para confirmar en la fecha: " + reservaDTO.getFecha());
+            throw new ResourceNotFoundException("No hay PRE-RESERVA pendiente para confirmar en la fecha: " + reservaDTO.getFecha());
         }
 
         Reserva reserva = reservaOpt.get();
 
-        // Actualizar datos de transporte
+        // ✅ VALIDAR QUE EL PROVEEDOR COMPLETE TODOS LOS DATOS OBLIGATORIOS
+        validarDatosObligatoriosProveedor(reservaDTO);
+
+        // 1. ACTUALIZAR ÁREA (proveedor debe elegir)
+        Area area = areaRepository.findById(reservaDTO.getAreaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Área no encontrada con ID: " + reservaDTO.getAreaId()));
+
+        // 2. ACTUALIZAR ANDÉN (proveedor debe elegir)
+        Anden anden = andenRepository.findById(reservaDTO.getAndenId())
+                .orElseThrow(() -> new ResourceNotFoundException("Andén no encontrado con ID: " + reservaDTO.getAndenId()));
+
+        // Validar que el andén pertenezca al área
+        if (!anden.getArea().getId().equals(area.getId())) {
+            throw new BadRequestException("El andén seleccionado no pertenece al área especificada");
+        }
+
+        // 3. ACTUALIZAR TIPO DE SERVICIO (proveedor debe elegir)
+        TipoServicio tipoServicio = tipoServicioRepository.findById(reservaDTO.getTipoServicioId())
+                .orElseThrow(() -> new ResourceNotFoundException("Tipo de servicio no encontrado con ID: " + reservaDTO.getTipoServicioId()));
+
+        // 4. ACTUALIZAR DATOS DE TRANSPORTE (proveedor debe completar)
         Transporte transporte = reserva.getTransporte();
         transporte.setTipo(reservaDTO.getTransporteTipo());
         transporte.setMarca(reservaDTO.getTransporteMarca());
         transporte.setModelo(reservaDTO.getTransporteModelo());
         transporte.setPlaca(reservaDTO.getTransportePlaca());
         transporte.setCapacidad(reservaDTO.getTransporteCapacidad());
-
         transporteRepository.save(transporte);
 
-        // Limpiar transportistas anteriores
+        // 5. LIMPIAR Y CREAR TRANSPORTISTAS
         transportistaRepository.deleteAll(transporte.getTransportistas());
 
-        // Crear nuevos transportistas
         List<Transportista> transportistas = new ArrayList<>();
 
-        // Conductor
+        // Conductor (obligatorio)
         Transportista conductor = new Transportista();
         conductor.setTransporte(transporte);
         conductor.setNombres(reservaDTO.getConductorNombres());
@@ -474,7 +494,7 @@ public class ReservaServiceImpl implements ReservaService {
         conductor.setEsConductor(true);
         transportistas.add(conductor);
 
-        // Ayudantes
+        // Ayudantes (opcional)
         if (reservaDTO.getAyudantes() != null && !reservaDTO.getAyudantes().isEmpty()) {
             for (AyudanteDTO ayudanteDTO : reservaDTO.getAyudantes()) {
                 Transportista ayudante = new Transportista();
@@ -486,16 +506,25 @@ public class ReservaServiceImpl implements ReservaService {
                 transportistas.add(ayudante);
             }
         }
-
         transportistaRepository.saveAll(transportistas);
 
-        // Actualizar datos adicionales de la reserva
-        if (reservaDTO.getNumeroPalets() != null) {
-            reserva.setDescripcion("Palets: " + reservaDTO.getNumeroPalets() +
-                    (reservaDTO.getDescripcion() != null ? " - " + reservaDTO.getDescripcion() : ""));
-        }
+        // 6. ACTUALIZAR RESERVA CON TODOS LOS DATOS
+        reserva.setArea(area);
+        reserva.setAnden(anden);
+        reserva.setTipoServicio(tipoServicio);
 
-        // Cambiar estado a CONFIRMADA
+        // Mantener datos de la plantilla (fecha, horarios ya están)
+        // Agregar descripción con palets si se proporcionó
+        String descripcion = "Reserva confirmada";
+        if (reservaDTO.getNumeroPalets() != null) {
+            descripcion += " - Palets: " + reservaDTO.getNumeroPalets();
+        }
+        if (reservaDTO.getDescripcion() != null && !reservaDTO.getDescripcion().trim().isEmpty()) {
+            descripcion += " - " + reservaDTO.getDescripcion();
+        }
+        reserva.setDescripcion(descripcion);
+
+        // ✅ CAMBIAR ESTADO A CONFIRMADA
         reserva.setEstado(EstadoReserva.CONFIRMADA);
 
         Reserva reservaActualizada = reservaRepository.save(reserva);
@@ -504,8 +533,12 @@ public class ReservaServiceImpl implements ReservaService {
         ReservaDetalleDTO reservaDetalle = convertirADetalleDTO(reservaActualizada);
         emailService.enviarConfirmacionReserva(reservaDetalle, proveedor.getEmail());
 
+        log.info("PRE-RESERVA {} confirmada completamente por proveedor {}",
+                reserva.getId(), proveedor.getNombre());
+
         return reservaDetalle;
     }
+
 
     @Override
     @Transactional
@@ -672,5 +705,53 @@ public class ReservaServiceImpl implements ReservaService {
                         "fechaFin", fechaFin != null ? fechaFin : LocalDate.now()
                 )
         );
+    }
+
+    private void validarDatosObligatoriosProveedor(ReservaDTO reservaDTO) {
+        List<String> errores = new ArrayList<>();
+
+        // Validar área
+        if (reservaDTO.getAreaId() == null) {
+            errores.add("Debe seleccionar un área");
+        }
+
+        // Validar andén
+        if (reservaDTO.getAndenId() == null) {
+            errores.add("Debe seleccionar un andén");
+        }
+
+        // Validar tipo de servicio
+        if (reservaDTO.getTipoServicioId() == null) {
+            errores.add("Debe seleccionar un tipo de servicio");
+        }
+
+        // Validar datos de transporte
+        if (reservaDTO.getTransporteTipo() == null || reservaDTO.getTransporteTipo().trim().isEmpty()) {
+            errores.add("Debe especificar el tipo de transporte");
+        }
+        if (reservaDTO.getTransporteMarca() == null || reservaDTO.getTransporteMarca().trim().isEmpty()) {
+            errores.add("Debe especificar la marca del transporte");
+        }
+        if (reservaDTO.getTransporteModelo() == null || reservaDTO.getTransporteModelo().trim().isEmpty()) {
+            errores.add("Debe especificar el modelo del transporte");
+        }
+        if (reservaDTO.getTransportePlaca() == null || reservaDTO.getTransportePlaca().trim().isEmpty()) {
+            errores.add("Debe especificar la placa del transporte");
+        }
+
+        // Validar datos del conductor
+        if (reservaDTO.getConductorNombres() == null || reservaDTO.getConductorNombres().trim().isEmpty()) {
+            errores.add("Debe especificar los nombres del conductor");
+        }
+        if (reservaDTO.getConductorApellidos() == null || reservaDTO.getConductorApellidos().trim().isEmpty()) {
+            errores.add("Debe especificar los apellidos del conductor");
+        }
+        if (reservaDTO.getConductorCedula() == null || reservaDTO.getConductorCedula().trim().isEmpty()) {
+            errores.add("Debe especificar la cédula del conductor");
+        }
+
+        if (!errores.isEmpty()) {
+            throw new BadRequestException("Faltan datos obligatorios: " + String.join(", ", errores));
+        }
     }
 }
