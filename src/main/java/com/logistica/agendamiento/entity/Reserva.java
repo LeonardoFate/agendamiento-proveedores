@@ -28,23 +28,23 @@ public class Reserva {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "proveedor_id", nullable = true)
+    @JoinColumn(name = "proveedor_id", nullable = false) // ✅ Este SÍ es obligatorio
     private Proveedor proveedor;
 
     @ManyToOne
-    @JoinColumn(name = "area_id", nullable = true)
+    @JoinColumn(name = "area_id", nullable = true) // ✅ CAMBIO: Permitir NULL para PRE-RESERVAS
     private Area area;
 
     @ManyToOne
-    @JoinColumn(name = "anden_id", nullable = true)
+    @JoinColumn(name = "anden_id", nullable = true) // ✅ CAMBIO: Permitir NULL para PRE-RESERVAS
     private Anden anden;
 
     @ManyToOne
-    @JoinColumn(name = "tipo_servicio_id", nullable = true)
+    @JoinColumn(name = "tipo_servicio_id", nullable = true) // ✅ CAMBIO: Permitir NULL para PRE-RESERVAS
     private TipoServicio tipoServicio;
 
     @ManyToOne
-    @JoinColumn(name = "transporte_id", nullable = true)
+    @JoinColumn(name = "transporte_id", nullable = true) // ✅ CAMBIO: Permitir NULL para PRE-RESERVAS
     private Transporte transporte;
 
     @Column(nullable = false)
@@ -58,7 +58,7 @@ public class Reserva {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private EstadoReserva estado = EstadoReserva.PENDIENTE;
+    private EstadoReserva estado = EstadoReserva.PENDIENTE_CONFIRMACION; // ✅ Estado por defecto
 
     @Column(columnDefinition = "TEXT")
     private String descripcion;

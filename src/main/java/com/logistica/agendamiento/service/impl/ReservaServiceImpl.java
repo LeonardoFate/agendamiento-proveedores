@@ -451,6 +451,11 @@ public class ReservaServiceImpl implements ReservaService {
 
         Reserva reserva = reservaOpt.get();
 
+        // ✅ VALIDAR QUE REALMENTE ES UNA PRE-RESERVA (transporte debe ser NULL)
+        if (reserva.getTransporte() != null) {
+            throw new BadRequestException("Esta reserva ya tiene datos de transporte completados");
+        }
+
         // ✅ VALIDAR QUE EL PROVEEDOR COMPLETE TODOS LOS DATOS OBLIGATORIOS
         validarDatosObligatoriosProveedor(reservaDTO);
 
@@ -471,23 +476,23 @@ public class ReservaServiceImpl implements ReservaService {
         TipoServicio tipoServicio = tipoServicioRepository.findById(reservaDTO.getTipoServicioId())
                 .orElseThrow(() -> new ResourceNotFoundException("Tipo de servicio no encontrado con ID: " + reservaDTO.getTipoServicioId()));
 
-        // 4. ACTUALIZAR DATOS DE TRANSPORTE (proveedor debe completar)
-        Transporte transporte = reserva.getTransporte();
+        // 4. ✅ CREAR NUEVO TRANSPORTE (no actualizar, porque no existe)
+        Transporte transporte = new Transporte();
         transporte.setTipo(reservaDTO.getTransporteTipo());
         transporte.setMarca(reservaDTO.getTransporteMarca());
         transporte.setModelo(reservaDTO.getTransporteModelo());
         transporte.setPlaca(reservaDTO.getTransportePlaca());
         transporte.setCapacidad(reservaDTO.getTransporteCapacidad());
-        transporteRepository.save(transporte);
 
-        // 5. LIMPIAR Y CREAR TRANSPORTISTAS
-        transportistaRepository.deleteAll(transporte.getTransportistas());
+        // ✅ IMPORTANTE: Guardar el transporte ANTES de usarlo
+        Transporte transporteGuardado = transporteRepository.save(transporte);
 
+        // 5. ✅ CREAR TRANSPORTISTAS (no hay que limpiar porque no existen)
         List<Transportista> transportistas = new ArrayList<>();
 
         // Conductor (obligatorio)
         Transportista conductor = new Transportista();
-        conductor.setTransporte(transporte);
+        conductor.setTransporte(transporteGuardado); // ✅ Usar el transporte guardado
         conductor.setNombres(reservaDTO.getConductorNombres());
         conductor.setApellidos(reservaDTO.getConductorApellidos());
         conductor.setCedula(reservaDTO.getConductorCedula());
@@ -498,7 +503,7 @@ public class ReservaServiceImpl implements ReservaService {
         if (reservaDTO.getAyudantes() != null && !reservaDTO.getAyudantes().isEmpty()) {
             for (AyudanteDTO ayudanteDTO : reservaDTO.getAyudantes()) {
                 Transportista ayudante = new Transportista();
-                ayudante.setTransporte(transporte);
+                ayudante.setTransporte(transporteGuardado); // ✅ Usar el transporte guardado
                 ayudante.setNombres(ayudanteDTO.getNombres());
                 ayudante.setApellidos(ayudanteDTO.getApellidos());
                 ayudante.setCedula(ayudanteDTO.getCedula());
@@ -506,12 +511,15 @@ public class ReservaServiceImpl implements ReservaService {
                 transportistas.add(ayudante);
             }
         }
+
+        // ✅ Guardar todos los transportistas
         transportistaRepository.saveAll(transportistas);
 
         // 6. ACTUALIZAR RESERVA CON TODOS LOS DATOS
         reserva.setArea(area);
         reserva.setAnden(anden);
         reserva.setTipoServicio(tipoServicio);
+        reserva.setTransporte(transporteGuardado); // ✅ Asignar el transporte guardado
 
         // Mantener datos de la plantilla (fecha, horarios ya están)
         // Agregar descripción con palets si se proporcionó

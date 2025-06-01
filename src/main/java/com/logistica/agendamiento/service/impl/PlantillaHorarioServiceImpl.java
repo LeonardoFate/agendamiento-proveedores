@@ -265,20 +265,71 @@ public class PlantillaHorarioServiceImpl implements PlantillaHorarioService {
         DiaSemana dia = convertirDayOfWeekADiaSemana(fecha.getDayOfWeek());
         List<PlantillaHorario> plantillasDelDia = plantillaHorarioRepository.findByDiaAndActivoTrue(dia);
 
-        for (PlantillaHorario plantilla : plantillasDelDia) {
-            // Verificar si ya existe reserva para este proveedor y fecha
-            Optional<Reserva> reservaExistente = reservaRepository
-                    .findByProveedorAndFecha(plantilla.getProveedor(), fecha)
-                    .stream().findFirst();
+        log.info("🔄 Iniciando generación de PRE-RESERVAS para {} ({})", fecha, dia);
+        log.info("📋 Plantillas encontradas: {}", plantillasDelDia.size());
 
-            if (reservaExistente.isEmpty()) {
+        if (plantillasDelDia.isEmpty()) {
+            log.warn("⚠️ No hay plantillas activas para el día {}", dia);
+            return;
+        }
+
+        int exitosas = 0;
+        int fallidas = 0;
+        int yaExistentes = 0;
+
+        for (PlantillaHorario plantilla : plantillasDelDia) {
+            try {
+                log.debug("🔍 Procesando plantilla ID {} - Proveedor: {}",
+                        plantilla.getId(),
+                        plantilla.getProveedor().getNombre());
+
+                // Verificar si ya existe reserva para este proveedor y fecha
+                List<Reserva> reservasExistentes = reservaRepository
+                        .findByProveedorAndFecha(plantilla.getProveedor(), fecha);
+
+                if (!reservasExistentes.isEmpty()) {
+                    yaExistentes++;
+                    log.debug("⏭️ Ya existe reserva para proveedor {} en fecha {} - Estados: {}",
+                            plantilla.getProveedor().getNombre(),
+                            fecha,
+                            reservasExistentes.stream()
+                                    .map(r -> r.getEstado().name())
+                                    .collect(Collectors.joining(", ")));
+                    continue;
+                }
+
+                // Crear PRE-RESERVA
+                log.debug("✨ Creando PRE-RESERVA para proveedor {}",
+                        plantilla.getProveedor().getNombre());
+
                 crearReservaDesdePlugantilla(plantilla, fecha);
+                exitosas++;
+
+                log.info("✅ PRE-RESERVA creada - Proveedor: {}, Fecha: {}, Horario: {} - {}",
+                        plantilla.getProveedor().getNombre(),
+                        fecha,
+                        plantilla.getHoraInicio(),
+                        plantilla.getHoraFin());
+
+            } catch (Exception e) {
+                fallidas++;
+                log.error("❌ Error procesando plantilla ID {} (Proveedor: {}) para fecha {}: {}",
+                        plantilla.getId(),
+                        plantilla.getProveedor().getNombre(),
+                        fecha,
+                        e.getMessage(), e);
             }
         }
 
-        log.info("Generadas reservas automáticas para {}: {} reservas", fecha, plantillasDelDia.size());
-    }
+        log.info("📊 Generación de PRE-RESERVAS para {}: {} exitosas, {} ya existentes, {} fallidas de {} plantillas",
+                fecha, exitosas, yaExistentes, fallidas, plantillasDelDia.size());
 
+        if (exitosas == 0 && fallidas == 0 && yaExistentes > 0) {
+            log.info("ℹ️ Todas las reservas para {} ya existían previamente", fecha);
+        } else if (exitosas == 0 && fallidas == 0 && yaExistentes == 0) {
+            log.warn("⚠️ No se generaron reservas y no había existentes. Revisar plantillas.");
+        }
+    }
     @Override
     @Transactional
     public void generarReservasSemanaCompleta(LocalDate fechaInicio) {
@@ -395,23 +446,55 @@ public class PlantillaHorarioServiceImpl implements PlantillaHorarioService {
                 .orElse(andenesArea.isEmpty() ? null : andenesArea.get(0));
     }
 
+    // ✅ MÉTODO AUXILIAR MEJORADO TAMBIÉN
     private void crearReservaDesdePlugantilla(PlantillaHorario plantilla, LocalDate fecha) {
-        Reserva reserva = new Reserva();
+        try {
+            log.debug("🏗️ Iniciando creación de PRE-RESERVA...");
 
-        // ✅ SOLO datos básicos de la plantilla
-        reserva.setProveedor(plantilla.getProveedor());
-        reserva.setFecha(fecha);
-        reserva.setHoraInicio(plantilla.getHoraInicio());
-        reserva.setHoraFin(plantilla.getHoraFin());
-        reserva.setEstado(EstadoReserva.PENDIENTE_CONFIRMACION);
-        reserva.setDescripcion("PRE-RESERVA: Proveedor debe seleccionar área, andén, tipo de servicio y completar datos de transporte");
+            Reserva reserva = new Reserva();
 
-        // ✅ Los campos area, anden, tipoServicio, transporte quedan NULL
-        // hasta que el proveedor los complete
+            // Validar que el proveedor existe y está activo
+            if (plantilla.getProveedor() == null) {
+                throw new IllegalStateException("La plantilla no tiene proveedor asignado");
+            }
 
-        reservaRepository.save(reserva);
-        log.info("✅ PRE-RESERVA básica creada para proveedor {} en fecha {}",
-                plantilla.getProveedor().getNombre(), fecha);
+            if (!plantilla.getProveedor().getEstado()) {
+                log.warn("⚠️ Proveedor {} está inactivo, saltando creación de reserva",
+                        plantilla.getProveedor().getNombre());
+                return;
+            }
+
+            // ✅ SOLO datos básicos de la plantilla (campos obligatorios)
+            reserva.setProveedor(plantilla.getProveedor());
+            reserva.setFecha(fecha);
+            reserva.setHoraInicio(plantilla.getHoraInicio());
+            reserva.setHoraFin(plantilla.getHoraFin());
+            reserva.setEstado(EstadoReserva.PENDIENTE_CONFIRMACION);
+            reserva.setDescripcion("PRE-RESERVA: Proveedor debe completar datos de área, andén, tipo de servicio y transporte");
+
+            // ✅ CRÍTICO: Los campos area, anden, tipoServicio, transporte quedan NULL
+            reserva.setArea(null);
+            reserva.setAnden(null);
+            reserva.setTipoServicio(null);
+            reserva.setTransporte(null);
+
+            log.debug("💾 Guardando PRE-RESERVA en base de datos...");
+            Reserva reservaGuardada = reservaRepository.save(reserva);
+
+            log.info("✅ PRE-RESERVA creada exitosamente - ID: {}, Proveedor: {}, Fecha: {}, Estado: {}",
+                    reservaGuardada.getId(),
+                    plantilla.getProveedor().getNombre(),
+                    fecha,
+                    reservaGuardada.getEstado());
+
+        } catch (Exception e) {
+            log.error("💥 Error detallado creando PRE-RESERVA para proveedor {} en fecha {}",
+                    plantilla.getProveedor().getNombre(),
+                    fecha, e);
+
+            // Re-lanzar la excepción para que el método padre la maneje
+            throw new RuntimeException("Error al crear PRE-RESERVA: " + e.getMessage(), e);
+        }
     }
 
 
