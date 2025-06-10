@@ -343,20 +343,47 @@ public class ReservaServiceImpl implements ReservaService {
 
     private ReservaDTO convertirADTO(Reserva reserva) {
         ReservaDTO dto = new ReservaDTO();
+
+        // ✅ Datos básicos (siempre presentes)
         dto.setId(reserva.getId());
         dto.setProveedorId(reserva.getProveedor().getId());
         dto.setProveedorNombre(reserva.getProveedor().getNombre());
-        dto.setAreaId(reserva.getArea().getId());
-        dto.setAreaNombre(reserva.getArea().getNombre());
-        dto.setAndenId(reserva.getAnden().getId());
-        dto.setAndenNumero(reserva.getAnden().getNumero());
-        dto.setTipoServicioId(reserva.getTipoServicio().getId());
-        dto.setTipoServicioNombre(reserva.getTipoServicio().getNombre());
         dto.setFecha(reserva.getFecha());
         dto.setHoraInicio(reserva.getHoraInicio());
         dto.setHoraFin(reserva.getHoraFin());
         dto.setEstado(reserva.getEstado());
-        dto.setTransportePlaca(reserva.getTransporte().getPlaca());
+        dto.setDescripcion(reserva.getDescripcion());
+
+        // ✅ Manejo seguro de campos NULL
+        if (reserva.getArea() != null) {
+            dto.setAreaId(reserva.getArea().getId());
+            dto.setAreaNombre(reserva.getArea().getNombre());
+        }
+
+        if (reserva.getAnden() != null) {
+            dto.setAndenId(reserva.getAnden().getId());
+            dto.setAndenNumero(reserva.getAnden().getNumero());
+        }
+
+        if (reserva.getTipoServicio() != null) {
+            dto.setTipoServicioId(reserva.getTipoServicio().getId());
+            dto.setTipoServicioNombre(reserva.getTipoServicio().getNombre());
+        }
+
+        if (reserva.getTransporte() != null) {
+            dto.setTransportePlaca(reserva.getTransporte().getPlaca());
+
+            // Obtener conductor si existe
+            reserva.getTransporte().getTransportistas().stream()
+                    .filter(Transportista::getEsConductor)
+                    .findFirst()
+                    .ifPresent(conductor -> {
+                        dto.setConductorNombres(conductor.getNombres());
+                        dto.setConductorApellidos(conductor.getApellidos());
+                        dto.setConductorCedula(conductor.getCedula());
+                    });
+        }
+
         return dto;
     }
 
