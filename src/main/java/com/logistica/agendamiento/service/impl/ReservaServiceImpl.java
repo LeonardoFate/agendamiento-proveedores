@@ -180,7 +180,7 @@ public class ReservaServiceImpl implements ReservaService {
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva no encontrada con ID: " + id));
 
         // Solo se permite actualizar reservas en estado PENDIENTE
-        if (reserva.getEstado() != EstadoReserva.PENDIENTE) {
+        if (reserva.getEstado() != EstadoReserva.CONFIRMADA) {
             throw new BadRequestException("Solo se pueden modificar reservas en estado PENDIENTE");
         }
 
@@ -304,7 +304,7 @@ public class ReservaServiceImpl implements ReservaService {
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva no encontrada con ID: " + id));
 
         // Solo se permite cancelar reservas en estado PENDIENTE
-        if (reserva.getEstado() != EstadoReserva.PENDIENTE) {
+        if (reserva.getEstado() != EstadoReserva.CONFIRMADA) {
             throw new BadRequestException("Solo se pueden cancelar reservas en estado PENDIENTE");
         }
 
@@ -316,30 +316,58 @@ public class ReservaServiceImpl implements ReservaService {
         emailService.enviarNotificacionCancelacion(reservaDetalle, reserva.getProveedor().getEmail());
     }
     private void validarTransicionEstado(EstadoReserva estadoActual, EstadoReserva nuevoEstado) {
-        // Definir transiciones válidas
+        log.info("🔍 Validando transición: {} -> {}", estadoActual, nuevoEstado);
+
         switch (estadoActual) {
-            case PENDIENTE:
-                if (nuevoEstado != EstadoReserva.EN_PLANTA && nuevoEstado != EstadoReserva.CANCELADA) {
-                    throw new BadRequestException("Desde PENDIENTE solo se puede pasar a EN_PLANTA o CANCELADA");
+            case PENDIENTE_CONFIRMACION:
+                // Desde pendiente confirmación → confirmada o cancelada
+                if (nuevoEstado != EstadoReserva.CONFIRMADA &&
+                        nuevoEstado != EstadoReserva.CANCELADA) {
+                    throw new BadRequestException("Desde PENDIENTE_CONFIRMACION solo se puede pasar a CONFIRMADA o CANCELADA");
                 }
                 break;
+
+            case CONFIRMADA:
+                // ✅ TU CASO: Desde confirmada → en_planta o cancelada
+                if (nuevoEstado != EstadoReserva.EN_PLANTA &&
+                        nuevoEstado != EstadoReserva.CANCELADA) {
+                    log.error("❌ Transición inválida desde CONFIRMADA a {}", nuevoEstado);
+                    throw new BadRequestException("Desde CONFIRMADA solo se puede pasar a EN_PLANTA o CANCELADA");
+                }
+                log.info("✅ Transición válida desde CONFIRMADA a {}", nuevoEstado);
+                break;
+
             case EN_PLANTA:
-                if (nuevoEstado != EstadoReserva.EN_RECEPCION) {
-                    throw new BadRequestException("Desde EN_PLANTA solo se puede pasar a EN_RECEPCION");
+                // Desde en_planta → en_recepcion o completada (salida directa)
+                if (nuevoEstado != EstadoReserva.EN_RECEPCION &&
+                        nuevoEstado != EstadoReserva.COMPLETADA) {
+                    throw new BadRequestException("Desde EN_PLANTA solo se puede pasar a EN_RECEPCION o COMPLETADA");
                 }
                 break;
+
             case EN_RECEPCION:
+                // Desde en_recepcion → completada
                 if (nuevoEstado != EstadoReserva.COMPLETADA) {
                     throw new BadRequestException("Desde EN_RECEPCION solo se puede pasar a COMPLETADA");
                 }
                 break;
+
             case COMPLETADA:
+                // Estado final
+                throw new BadRequestException("No se puede cambiar el estado de una reserva COMPLETADA");
+
             case CANCELADA:
-                throw new BadRequestException("No se puede cambiar el estado de una reserva COMPLETADA o CANCELADA");
+                // Estado final
+                throw new BadRequestException("No se puede cambiar el estado de una reserva CANCELADA");
+
             default:
-                throw new BadRequestException("Estado no reconocido");
+                log.error("❌ Estado no reconocido: {}", estadoActual);
+                throw new BadRequestException("Estado no reconocido: " + estadoActual);
         }
+
+        log.info("✅ Transición aprobada: {} -> {}", estadoActual, nuevoEstado);
     }
+
 
     private ReservaDTO convertirADTO(Reserva reserva) {
         ReservaDTO dto = new ReservaDTO();

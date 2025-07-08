@@ -4,6 +4,7 @@ import com.logistica.agendamiento.dto.RegistroTiempoDTO;
 import com.logistica.agendamiento.entity.enums.TipoRegistro;
 import com.logistica.agendamiento.service.RegistroTiempoService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
-
+@Slf4j
 @RestController
 @RequestMapping("/api/registros-tiempo")
 @RequiredArgsConstructor
@@ -32,7 +33,17 @@ public class RegistroTiempoController {
             @RequestParam Long reservaId,
             @RequestParam Long usuarioId,
             @RequestParam TipoRegistro tipo) {
-        return new ResponseEntity<>(registroTiempoService.iniciarRegistro(reservaId, usuarioId, tipo), HttpStatus.CREATED);
+
+        log.info("Iniciando registro: reservaId={}, usuarioId={}, tipo={}",
+                reservaId, usuarioId, tipo);
+
+        try {
+            RegistroTiempoDTO registro = registroTiempoService.iniciarRegistro(reservaId, usuarioId, tipo);
+            return new ResponseEntity<>(registro, HttpStatus.CREATED);
+        } catch (Exception e) {
+            log.error("Error al iniciar registro: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @PostMapping("/{registroId}/finalizar")
