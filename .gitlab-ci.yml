@@ -4,15 +4,14 @@ stages:
   - sonar
 
 variables:
-  MAVEN_CLI_OPTS: "-s .mvn/settings.xml --batch-mode"
-  SONAR_HOST_URL: "http://tu-sonarqube:9000"   # Cambia esto por tu URL real
-
-before_script:
-  - 'which mvn || (apt-get update && apt-get install -y maven)'
+  MAVEN_CLI_OPTS: "--batch-mode"
+  SONAR_HOST_URL: "http://localhost:9000"  # Cambia por la URL real
 
 build:
   stage: build
-  image: maven:3.9.3-eclipse-temurin-17
+  image: eclipse-temurin:21-jdk
+  before_script:
+    - apt-get update && apt-get install -y maven
   script:
     - mvn $MAVEN_CLI_OPTS clean compile
   artifacts:
@@ -21,7 +20,9 @@ build:
 
 test:
   stage: test
-  image: maven:3.9.3-eclipse-temurin-17
+  image: eclipse-temurin:21-jdk
+  before_script:
+    - apt-get update && apt-get install -y maven
   script:
     - mvn $MAVEN_CLI_OPTS test
   artifacts:
@@ -31,12 +32,13 @@ test:
 
 sonarqube:
   stage: sonar
-  image:
-    name: maven:3.9.3-eclipse-temurin-17
-    entrypoint: [""]
+  image: eclipse-temurin:21-jdk
+  before_script:
+    - apt-get update && apt-get install -y maven
   script:
-    - mvn $MAVEN_CLI_OPTS verify sonar:sonar -Dsonar.projectKey=mi-proyecto \
+    - mvn $MAVEN_CLI_OPTS verify sonar:sonar \
+      -Dsonar.projectKey=mi-proyecto \
       -Dsonar.host.url=$SONAR_HOST_URL \
       -Dsonar.login=$SONAR_TOKEN
-  only:
-    - main
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
