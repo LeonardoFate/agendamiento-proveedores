@@ -40,7 +40,7 @@ public class Usuario {
     @Column(nullable = false)
     private Rol rol;
 
-    @Column(nullable = false, columnDefinition = "TINYINT(1)")
+    @Column(nullable = false)
     private Boolean estado = true;
 
 

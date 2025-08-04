@@ -28,7 +28,7 @@ public class Observacion {
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(length = 500)
     private String descripcion;
 
     @CreationTimestamp

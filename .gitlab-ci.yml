@@ -1,0 +1,42 @@
+stages:
+  - build
+  - test
+  - sonar
+
+variables:
+  MAVEN_CLI_OPTS: "-s .mvn/settings.xml --batch-mode"
+  SONAR_HOST_URL: "http://tu-sonarqube:9000"   # Cambia esto por tu URL real
+
+before_script:
+  - 'which mvn || (apt-get update && apt-get install -y maven)'
+
+build:
+  stage: build
+  image: maven:3.9.3-eclipse-temurin-17
+  script:
+    - mvn $MAVEN_CLI_OPTS clean compile
+  artifacts:
+    paths:
+      - target/
+
+test:
+  stage: test
+  image: maven:3.9.3-eclipse-temurin-17
+  script:
+    - mvn $MAVEN_CLI_OPTS test
+  artifacts:
+    when: always
+    reports:
+      junit: target/surefire-reports/*.xml
+
+sonarqube:
+  stage: sonar
+  image:
+    name: maven:3.9.3-eclipse-temurin-17
+    entrypoint: [""]
+  script:
+    - mvn $MAVEN_CLI_OPTS verify sonar:sonar -Dsonar.projectKey=mi-proyecto \
+      -Dsonar.host.url=$SONAR_HOST_URL \
+      -Dsonar.login=$SONAR_TOKEN
+  only:
+    - main

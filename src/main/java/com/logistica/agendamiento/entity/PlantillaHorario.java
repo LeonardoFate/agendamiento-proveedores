@@ -13,8 +13,6 @@ import java.time.LocalTime;
 
 @Entity
 @Table(name = "plantilla_horario")
-// ✅ IMPORTANTE: Removido el constraint único que causaba problemas
-// La validación ahora se hace en el servicio para mayor flexibilidad
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

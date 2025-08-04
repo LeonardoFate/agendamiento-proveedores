@@ -30,10 +30,10 @@ public class Auditoria {
     @JoinColumn(name = "usuario_id")
     private Usuario usuario;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "NVARCHAR(MAX)")
     private String valorAntiguo;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "NVARCHAR(MAX)")
     private String valorNuevo;
 
     @Column(length = 50)

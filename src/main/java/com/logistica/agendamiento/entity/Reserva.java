@@ -60,7 +60,7 @@ public class Reserva {
     @Column(nullable = false)
     private EstadoReserva estado = EstadoReserva.PENDIENTE_CONFIRMACION; // ✅ Estado por defecto
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "NVARCHAR(MAX)")
     private String descripcion;
 
     @OneToMany(mappedBy = "reserva", cascade = CascadeType.ALL, orphanRemoval = true)
