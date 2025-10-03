@@ -1,5 +1,6 @@
 package com.logistica.agendamiento.dto;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -39,4 +40,7 @@ public class RegistroProveedorRequest {
 
     @NotBlank(message = "El teléfono es obligatorio")
     private String telefono;
+
+    @AssertTrue(message = "Debe aceptar la política de privacidad para continuar")
+    private Boolean aceptoPoliticaPrivacidad;
 }

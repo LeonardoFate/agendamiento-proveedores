@@ -91,6 +91,9 @@ public class ProveedorServiceImpl implements ProveedorService {
         dto.setTelefono(proveedor.getTelefono());
         dto.setEmail(proveedor.getEmail());
         dto.setEstado(proveedor.getEstado());
+        dto.setAceptoPoliticaPrivacidad(proveedor.getAceptoPoliticaPrivacidad());
+        dto.setFechaAceptacionPolitica(proveedor.getFechaAceptacionPolitica());
+        dto.setIpAceptacionPolitica(proveedor.getIpAceptacionPolitica());
 
         if (proveedor.getUsuario() != null) {
             dto.setUsuarioId(proveedor.getUsuario().getId());
@@ -98,6 +101,7 @@ public class ProveedorServiceImpl implements ProveedorService {
 
         return dto;
     }
+
     @Override
     public ProveedorDTO obtenerProveedorPorUsuarioId(Long usuarioId) {
         Proveedor proveedor = proveedorRepository.findByUsuarioId(usuarioId)

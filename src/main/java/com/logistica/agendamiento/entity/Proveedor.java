@@ -42,10 +42,19 @@ public class Proveedor {
     @JoinColumn(name = "usuario_id", unique = true)
     private Usuario usuario;
 
+    @Column(nullable = false)
+    private Boolean aceptoPoliticaPrivacidad = false;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    @Column
+    private LocalDateTime fechaAceptacionPolitica;
+
+    @Column(length = 50)
+    private String ipAceptacionPolitica;
 }

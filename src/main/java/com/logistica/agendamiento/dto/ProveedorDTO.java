@@ -3,6 +3,7 @@ package com.logistica.agendamiento.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
+import java.time.LocalDateTime;
 
 @Data
 public class ProveedorDTO {
@@ -28,4 +29,10 @@ public class ProveedorDTO {
     private Boolean estado;
 
     private Long usuarioId;
+
+    private Boolean aceptoPoliticaPrivacidad;
+
+    private LocalDateTime fechaAceptacionPolitica;
+
+    private String ipAceptacionPolitica;
 }

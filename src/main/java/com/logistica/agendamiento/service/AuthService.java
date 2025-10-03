@@ -1,3 +1,4 @@
+// src/main/java/com/logistica/agendamiento/service/AuthService.java
 package com.logistica.agendamiento.service;
 
 import com.logistica.agendamiento.dto.LoginRequest;
@@ -10,6 +11,7 @@ import com.logistica.agendamiento.exception.ResourceAlreadyExistsException;
 import com.logistica.agendamiento.repository.ProveedorRepository;
 import com.logistica.agendamiento.repository.UsuarioRepository;
 import com.logistica.agendamiento.security.JwtTokenProvider;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -19,6 +21,10 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -74,6 +80,11 @@ public class AuthService {
             throw new ResourceAlreadyExistsException("El RUC ya está registrado");
         }
 
+        // ✅ VALIDAR QUE ACEPTÓ LA POLÍTICA
+        if (request.getAceptoPoliticaPrivacidad() == null || !request.getAceptoPoliticaPrivacidad()) {
+            throw new IllegalArgumentException("Debe aceptar la política de privacidad para registrarse");
+        }
+
         // Crear el usuario
         Usuario usuario = new Usuario();
         usuario.setUsername(request.getUsername());
@@ -86,6 +97,9 @@ public class AuthService {
 
         Usuario usuarioGuardado = usuarioRepository.save(usuario);
 
+        // ✅ OBTENER IP DEL REQUEST
+        String ipAddress = getClientIP();
+
         // Crear el proveedor
         Proveedor proveedor = new Proveedor();
         proveedor.setNombre(request.getNombreEmpresa());
@@ -96,6 +110,25 @@ public class AuthService {
         proveedor.setEstado(true);
         proveedor.setUsuario(usuarioGuardado);
 
+        // ✅ REGISTRAR ACEPTACIÓN DE POLÍTICA (CORREGIDO)
+        proveedor.setAceptoPoliticaPrivacidad(true);
+        proveedor.setFechaAceptacionPolitica(LocalDateTime.now());
+        proveedor.setIpAceptacionPolitica(ipAddress); // ✅ CORREGIDO: sin la "S" extra
+
         proveedorRepository.save(proveedor);
+    }
+
+    // ✅ MÉTODO AUXILIAR PARA OBTENER IP
+    private String getClientIP() {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes != null) {
+            HttpServletRequest request = attributes.getRequest();
+            String xForwardedFor = request.getHeader("X-Forwarded-For");
+            if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+                return xForwardedFor.split(",")[0].trim();
+            }
+            return request.getRemoteAddr();
+        }
+        return "unknown";
     }
 }
