@@ -17,19 +17,19 @@ public class ReservaScheduler {
     private final PlantillaHorarioService plantillaHorarioService;
 
     // Generar reservas automáticamente todos los días a las 23:00 para el día siguiente
-    @Scheduled(cron = " 1 * * * * *")
-    public void generarReservasDelDiaSiguiente() {
-        try {
-            LocalDate manana = LocalDate.now().plusDays(1);
-            plantillaHorarioService.generarReservasDesdeePlantillas(manana);
-            log.info("Reservas automáticas generadas para {}", manana);
-        } catch (Exception e) {
-            log.error("Error generando reservas automáticas", e);
-        }
-    }
+//    @Scheduled(cron = "1 * * * * *")
+//    public void generarReservasDelDiaSiguiente() {
+//        try {
+//            LocalDate manana = LocalDate.now().plusDays(1);
+//            plantillaHorarioService.generarReservasDesdeePlantillas(manana);
+//            log.info("Reservas automáticas generadas para {}", manana);
+//        } catch (Exception e) {
+//            log.error("Error generando reservas automáticas", e);
+//        }
+//    }
 
 //     Generar reservas para toda la semana siguiente cada domingo a las 22:00Add commentMore actions
-    @Scheduled(cron = "* 22 * * * *")
+    @Scheduled(cron = "* 59 * * * *")
     public void generarReservasSemanaCompleta() {
         try {
             LocalDate lunesProximo = LocalDate.now().plusDays(1);

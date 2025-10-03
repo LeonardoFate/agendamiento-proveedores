@@ -1,23 +1,93 @@
 version: '3.8'
 
 services:
+  # Base de datos SQL Server
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: agendamiento_sqlserver
     environment:
-      ACCEPT_EULA: Y
-      SA_PASSWORD: TuPasswordSegura123
-      MSSQL_PID: Express
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "TuPasswordSegura123"
+      MSSQL_PID: "Express"
     ports:
       - "1433:1433"
     volumes:
       - sqlserver_data:/var/opt/mssql
+    networks:
+      - agendamiento-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P TuPasswordSegura123 -Q 'SELECT 1'"]
       interval: 30s
       timeout: 10s
       retries: 5
+      start_period: 30s
+
+  # Backend Spring Boot
+  backend:
+    build:
+      context: ./agendamiento-proveedores
+      dockerfile: Dockerfile
+    image: agendamiento-backend:latest
+    container_name: agendamiento_backend
+    environment:
+      # SQL Server
+      SPRING_DATASOURCE_URL: jdbc:sqlserver://sqlserver:1433;databaseName=agendamiento_proveedores;trustServerCertificate=true;encrypt=false
+      SPRING_DATASOURCE_USERNAME: sa
+      SPRING_DATASOURCE_PASSWORD: TuPasswordSegura123
+
+      # JPA/Hibernate
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.SQLServerDialect
+
+      # JWT
+      APP_JWT_SECRET: miClaveSecretaSuperSeguraParaPruebasDeDesarrollo12345
+      APP_JWT_EXPIRATION_MS: 86400000
+
+      # Email
+      SPRING_MAIL_HOST: smtp.gmail.com
+      SPRING_MAIL_PORT: 587
+      SPRING_MAIL_USERNAME: tu_correo@gmail.com
+      SPRING_MAIL_PASSWORD: tu_password_app
+
+      # Archivos
+      FILE_UPLOAD_DIR: /app/uploads
+
+      # Zona horaria
+      SPRING_JACKSON_TIME_ZONE: America/Guayaquil
+
+      SERVER_PORT: 8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - backend_uploads:/app/uploads
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - agendamiento-network
+    restart: unless-stopped
+
+  # Frontend Angular
+  frontend:
+    build:
+      context: ./AGENDAMIENTO-PROVEEDORES-FRONT
+      dockerfile: Dockerfile
+    image: agendamiento-frontend:latest
+    container_name: agendamiento_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - agendamiento-network
+    restart: unless-stopped
 
 volumes:
   sqlserver_data:
+  backend_uploads:
+
+networks:
+  agendamiento-network:
+    driver: bridge
