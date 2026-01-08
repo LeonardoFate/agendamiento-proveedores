@@ -42,8 +42,10 @@ public class Proveedor {
     @JoinColumn(name = "usuario_id", unique = true)
     private Usuario usuario;
 
-    @Column(nullable = false)
-    private Boolean aceptoPoliticaPrivacidad = false;
+    // CAMPO COMENTADO: La columna acepto_politica_privacidad no existe en la BD
+    // Solo existen: fecha_aceptacion_politica e ip_aceptacion_politica
+    // @Column(name = "acepto_politica_privacidad", nullable = false)
+    // private Boolean aceptoPoliticaPrivacidad = false;
 
     @CreationTimestamp
     @Column(updatable = false)
@@ -52,9 +54,9 @@ public class Proveedor {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    @Column
+    @Column(name = "fecha_aceptacion_politica")
     private LocalDateTime fechaAceptacionPolitica;
 
-    @Column(length = 50)
+    @Column(name = "ip_aceptacion_politica", length = 50)
     private String ipAceptacionPolitica;
 }

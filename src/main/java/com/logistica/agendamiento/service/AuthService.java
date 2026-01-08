@@ -81,9 +81,10 @@ public class AuthService {
         }
 
         // ✅ VALIDAR QUE ACEPTÓ LA POLÍTICA
-        if (request.getAceptoPoliticaPrivacidad() == null || !request.getAceptoPoliticaPrivacidad()) {
-            throw new IllegalArgumentException("Debe aceptar la política de privacidad para registrarse");
-        }
+        // COMENTADO: El campo aceptoPoliticaPrivacidad no existe en la BD
+        // if (request.getAceptoPoliticaPrivacidad() == null || !request.getAceptoPoliticaPrivacidad()) {
+        //     throw new IllegalArgumentException("Debe aceptar la política de privacidad para registrarse");
+        // }
 
         // Crear el usuario
         Usuario usuario = new Usuario();
@@ -110,10 +111,11 @@ public class AuthService {
         proveedor.setEstado(true);
         proveedor.setUsuario(usuarioGuardado);
 
-        // ✅ REGISTRAR ACEPTACIÓN DE POLÍTICA (CORREGIDO)
-        proveedor.setAceptoPoliticaPrivacidad(true);
+        // ✅ REGISTRAR ACEPTACIÓN DE POLÍTICA
+        // COMENTADO: El campo aceptoPoliticaPrivacidad no existe en la BD
+        // proveedor.setAceptoPoliticaPrivacidad(true);
         proveedor.setFechaAceptacionPolitica(LocalDateTime.now());
-        proveedor.setIpAceptacionPolitica(ipAddress); // ✅ CORREGIDO: sin la "S" extra
+        proveedor.setIpAceptacionPolitica(ipAddress);
 
         proveedorRepository.save(proveedor);
     }

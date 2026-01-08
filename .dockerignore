@@ -1,0 +1,11 @@
+target/
+.mvn/
+*.log
+*.env
+.git/
+.gitignore
+README.md
+node_modules/
+.idea/
+*.iml
+.DS_Store
